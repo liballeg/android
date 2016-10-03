@@ -1,4 +1,4 @@
-This provides a script which will download the Linux Android SDK and build Allegro for you.
+This provides a script which will download the Linux Android SDK and builds Allegro for you.
 
 This is work in progress, at the very least need to:
 - support updating, right now always have to start over
