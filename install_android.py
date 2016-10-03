@@ -14,13 +14,14 @@ class Settings:
     sdk_tgz_url = "https://dl.google.com/android/android-sdk_r24.4.1-linux.tgz"
     ndk_zip_url = "https://dl.google.com/android/repository/android-ndk-r12b-linux-x86_64.zip"
     min_api = {
+        "armeabi" : "15",
         "armeabi-v7a" : "15",
         "x86" : "15",
         "x86_64" : "21",
         "arm64-v8a" : "21",
         "mips" : "15",
         "mips64" : "21"}
-    architectures = ["armeabi-v7a", "x86", "x86_64", "arm64-v8a", "mips", "mips64"]
+    architectures = ["armeabi", "armeabi-v7a", "x86", "x86_64", "arm64-v8a", "mips", "mips64"]
     freetype_url = "http://download.savannah.gnu.org/releases/freetype/freetype-2.7.tar.bz2"
     ogg_url = "http://downloads.xiph.org/releases/ogg/libogg-1.3.2.tar.xz"
     vorbis_url = "http://downloads.xiph.org/releases/vorbis/libvorbis-1.3.5.tar.xz"
@@ -167,7 +168,7 @@ def install_ndk():
             continue
         print("Creating toolchain for", arch)
         arch2 = arch
-        if arch2 == "armeabi-v7a":
+        if arch2 in ["armeabi", "armeabi-v7a"]:
             arch2 = "arm"
         if arch2 == "arm64-v8a":
             arch2 = "arm64"
@@ -201,6 +202,8 @@ def setup_host(arch):
         host = "i686-linux-android"
     if arch == "x86_64":
         host = arch + "-linux-android"
+    if arch == "armeabi":
+        host = "arm-linux-androideabi"
     if arch == "armeabi-v7a":
         host = "arm-linux-androideabi"
     if arch == "arm64-v8a":
@@ -263,11 +266,16 @@ def build_allegro():
         makedirs(build)
         chdir(build)
 
+        extra = None
+        if arch == "armeabi":
+            extra = "-DWANT_ANDROID_LEGACY=on"
+
         com("cmake", args.allegro, "-DCMAKE_TOOLCHAIN_FILE=" +
             args.allegro + "/cmake/Toolchain-android.cmake",
             "-DARM_TARGETS=" + arch,
             "-DCMAKE_BUILD_TYPE=Release",
             "-DANDROID_TARGET=android-24",
+            extra,
             "-DWANT_DEMO=off",
             "-DWANT_EXAMPLES=off",
             "-DWANT_TESTS=off",
@@ -276,6 +284,7 @@ def build_allegro():
             "-DOGG_LIBRARY=" + toolchain + "/lib/libogg.a",
             "-DOGG_INCLUDE_DIR=" + toolchain + "/include",
             "-DVORBIS_LIBRARY=" + toolchain + "/lib/libvorbis.a",
+            "-DVORBISFILE_LIBRARY=" + toolchain + "/lib/libvorbisfile.a",
             "-DVORBIS_INCLUDE_DIR=" + toolchain + "/include",
             "-DSUPPORT_VORBIS=true",
             "-DFREETYPE_LIBRARY=" + toolchain + "/lib/libfreetype.a",
@@ -302,17 +311,53 @@ def build_aar():
     for arch in s.architectures:
         toolchain = args.path + "/toolchain-" + arch
         install = toolchain + "/user/" + arch
+        makedirs(allegro5 + "/src/main/jniLibs")
+        copy(install + "/lib", allegro5 + "/src/main/jniLibs/" + arch)
         makedirs(allegro5 + "/src/main/assets/" + arch)
         copy(install + "/include",
             allegro5 + "/src/main/assets/" + arch + "/")
-        makedirs(allegro5 + "/src/main/jniLibs")
-        copy(install + "/lib", allegro5 + "/src/main/jniLibs/" + arch)
+    write(allegro5 + "/src/main/assets/allegro.cmake",
+"""
+get_filename_component(ABI ${CMAKE_BINARY_DIR} NAME)
+set(base ${CMAKE_CURRENT_LIST_DIR})
+
+macro(standard_library NAME)
+    string(TOUPPER ${NAME} UNAME)
+    find_library(LIB_${UNAME} ${NAME})
+    target_link_libraries(${NATIVE_LIB} ${LIB_${UNAME}})
+endmacro()
+
+macro(allegro_library NAME INCLUDE)
+    string(TOUPPER ${NAME} UNAME)
+    include_directories(${base}/${ABI}/${INCLUDE})
+    set(path ${base}/../jni/${ABI}/lib${NAME})
+    if(EXISTS "${path}-debug.so")
+        set(LIB_${UNAME} ${path}-debug.so)
+    elseif(EXISTS "${path}.so")
+        set(LIB_${UNAME} ${path}.so)
+    else()
+        message(SEND_ERROR "${path}.so does not exist")
+    endif()
+    target_link_libraries(${NATIVE_LIB} ${LIB_${UNAME}})
+endmacro()
+
+include_directories(${base}/${ABI})
+allegro_library(allegro allegro)
+allegro_library(allegro_acodec addons/acodec)
+allegro_library(allegro_audio addons/audio)
+allegro_library(allegro_color addons/color)
+allegro_library(allegro_font addons/font)
+allegro_library(allegro_image addons/image)
+allegro_library(allegro_primitives addons/primitives)
+allegro_library(allegro_ttf addons/ttf)
+standard_library(m)
+standard_library(z)
+standard_library(log)
+standard_library(GLESv2)
+""")
     write(allegro5 + "/src/main/AndroidManifest.xml", """
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="org.liballeg.android">
-    <application android:allowBackup="true" android:label="Allegro 5"
-        android:supportsRtl="true">
-    </application>
 </manifest>
 """.lstrip())
     write(args.path + "/gradle/gradle.properties", """
@@ -351,6 +396,10 @@ dependencies {
 }
 """)
     write(args.path + "/gradle/settings.gradle", "include ':allegro5'")
+    chdir(args.path + "/gradle")
+    com("./gradlew", "build")
+    copy(allegro5 + "/build/outputs/aar/allegro5-release.aar", args.path + "/")
+    copy(allegro5 + "/build/outputs/aar/allegro5-debug.aar", args.path + "/")
 
 if __name__ == "__main__":
     main()
