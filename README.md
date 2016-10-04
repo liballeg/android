@@ -7,6 +7,7 @@ This is work in progress, at the very least need to support updating, right now 
  Android Studio will create these files for you:
 
  * app/src/main/java/.../MainActivity.java
+ * app/src/main/cpp/native-lib.cpp
  * app/build.gradle
  * app/CMakeLists.txt
 
@@ -44,8 +45,8 @@ This is work in progress, at the very least need to support updating, right now 
  }
 ```
 
-5. Edit your C/C++ code and use CMakeLists.txt for the list of source
+5. Edit your C/C++ code to use Allegro and use CMakeLists.txt for the list of source
 files and extra dependencies. Hit Run in Android Studio and it will
-deploy and run your Allegro game! Build an .apk and upload it to the
+deploy and run your Allegro game on the emulator or actual devices. Build an .apk and upload it to the
 store and it will just work!
 
