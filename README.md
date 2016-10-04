@@ -4,11 +4,11 @@ This is work in progress, at the very least need to support updating, right now 
 
 1. Create a new Android Studio NDK project
 
-    Android Studio will create these files for you:
+ Android Studio will create these files for you:
 
-    * app/src/main/java/.../MainActivity.java
-    * app/build.gradle
-    * app/CMakeLists.txt
+ * app/src/main/java/.../MainActivity.java
+ * app/build.gradle
+ * app/CMakeLists.txt
 
 2. In your app/build.gradle, inside of dependencies {}, add this:
 
