@@ -77,9 +77,9 @@ def com(*args, input = None):
         sys.stderr.write("/FAILED\\\n")
         sys.stderr.write("´`´`´`´`\n")
         s.log.write("FAILED\n")
-    s.log.write(r.stdout.decode("utf8") + "\n")
+    if r.stdout:
+        s.log.write(r.stdout.decode("utf8") + "\n")
     
-
 def makedirs(name):
     s.log.write("mkdir -p " + name + "\n")
     print("mkdir -p " + name)
@@ -90,8 +90,13 @@ def chdir(name):
     print("cd " + name)
     os.chdir(name)
 
-def write(name, contents):
+def write(name, contents, placeholders = {}):
     print("create", name)
+    contents = contents.replace("{", "{{")
+    contents = contents.replace("}", "}}")
+    contents = contents.replace("«", "{")
+    contents = contents.replace("»", "}")
+    contents = contents.format(**placeholders)
     open(name, "w").write(contents.strip() + "\n")
 
 def copy(source, destination):
@@ -377,6 +382,10 @@ buildscript {
 }
 """)
     write(allegro5 + "/build.gradle", """
+plugins {
+    id "com.jfrog.bintray" version "1.7"
+    id "com.github.dcendents.android-maven" version "1.5"
+}
 apply plugin: 'com.android.library'
 
 android {
@@ -393,12 +402,70 @@ dependencies {
     compile fileTree(include: ['*.jar'], dir: 'libs')
     compile 'com.android.support:appcompat-v7:24.2.1'
 }
-""")
+archivesBaseName = "allegro5-release"
+group = "org.liballeg"
+version = "«version»"
+install {
+    repositories.mavenInstaller {
+        pom.project {
+            name 'allegro5-release'
+            description 'Allegro for Android'
+            url 'http://liballeg.org'
+            inceptionYear '1995'
+            artifactId "allegro5-release"
+
+            packaging 'aar'
+            groupId 'org.liballeg'
+            version '«version»'
+
+            licenses {
+                license {
+                    name 'zlib'
+                    url 'http://liballeg.org/license.html'
+                    distribution 'repo'
+                }
+            }
+            scm {
+                connection 'https://github.com/liballeg/allegro5.git'
+                url 'https://github.com/liballeg/allegro5'
+
+            }
+            developers {
+                developer {
+                    name 'Allegro Developers'
+                }
+            }
+        }
+    }
+}
+
+Properties properties = new Properties()
+File f = "bintray.properties" as File
+properties.load(f.newDataInputStream())
+// needs a file bintray.properties with this inside:
+// bintray.user = <bintray user>
+// bintray.key = <bintray api key>
+
+bintray {   
+    user = properties.getProperty("bintray.user")
+    key = properties.getProperty("bintray.key")
+    configurations = ['archives']
+    pkg {
+        repo = 'maven'
+        name = 'allegro5-release'
+        userOrg = 'liballeg'
+        licenses = ['zlib']
+        vcsUrl = 'https://github.com/liballeg/allegro5.git'
+        version {
+            name = '«version»'
+        }
+        publish = true
+    }
+}
+""", {"version" : "1.0.0"})
     write(args.path + "/gradle/settings.gradle", "include ':allegro5'")
     chdir(args.path + "/gradle")
-    com("./gradlew", "build")
-    copy(allegro5 + "/build/outputs/aar/allegro5-release.aar", args.path + "/")
-    copy(allegro5 + "/build/outputs/aar/allegro5-debug.aar", args.path + "/")
+    com("./gradlew", "bintrayUpload")
 
 if __name__ == "__main__":
     main()
