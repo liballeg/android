@@ -1,6 +1,6 @@
-This provides a script which will download the Linux Android SDK and builds Allegro for you.
+This provides a script which will download the Linux Android SDK and
+build Allegro for you.
 
-This is work in progress, at the very least need to support updating, right now always have to start over
 
 1. Create a new Android Studio NDK project
 
@@ -14,14 +14,14 @@ This is work in progress, at the very least need to support updating, right now 
 2. In your app/build.gradle, inside of dependencies {}, add this:
 
  ```
- compile 'org.liballeg:allegro5-release:1.0.0'
+ compile 'org.liballeg:allegro5-release:5.2.0.0'
  ```
  
 3. In your CMakeLists.txt, add this to the end:
 
  ```
  set(NATIVE_LIB native-lib)
- include(build/intermediates/exploded-aar/allegro5-release/assets/allegro.cmake)
+ include(build/intermediates/exploded-aar/org.liballeg/allegro5-release/5.2.2.0/assets/allegro.cmake)
  ```
 
 4. Modify app/src/main/java/.../MainActivity.java like this:

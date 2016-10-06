@@ -25,6 +25,7 @@ class Settings:
     freetype_url = "http://download.savannah.gnu.org/releases/freetype/freetype-2.7.tar.bz2"
     ogg_url = "http://downloads.xiph.org/releases/ogg/libogg-1.3.2.tar.xz"
     vorbis_url = "http://downloads.xiph.org/releases/vorbis/libvorbis-1.3.5.tar.xz"
+    version = "5.2.2.0"
     
 s = Settings()
 
@@ -395,7 +396,7 @@ android {
         minSdkVersion 15
         targetSdkVersion 24
         versionCode 1
-        versionName "1.0"
+        versionName "«version»"
     }
 }
 dependencies {
@@ -405,6 +406,22 @@ dependencies {
 archivesBaseName = "allegro5-release"
 group = "org.liballeg"
 version = "«version»"
+task sourcesJar(type: Jar) {
+    from android.sourceSets.main.java.srcDirs
+    classifier = 'sources'
+}
+task javadoc(type: Javadoc) {
+    source = android.sourceSets.main.java.srcDirs
+    classpath += project.files(android.getBootClasspath().join(File.pathSeparator))
+}
+task javadocJar(type: Jar, dependsOn: javadoc) {
+    classifier = 'javadoc'
+    from javadoc.destinationDir
+}
+artifacts {
+    archives javadocJar
+    archives sourcesJar
+}
 install {
     repositories.mavenInstaller {
         pom.project {
@@ -440,7 +457,7 @@ install {
 }
 
 Properties properties = new Properties()
-File f = "bintray.properties" as File
+File f = "../bintray.properties" as File
 properties.load(f.newDataInputStream())
 // needs a file bintray.properties with this inside:
 // bintray.user = <bintray user>
@@ -462,7 +479,7 @@ bintray {
         publish = true
     }
 }
-""", {"version" : "1.0.0"})
+""", {"version" : s.version})
     write(args.path + "/gradle/settings.gradle", "include ':allegro5'")
     chdir(args.path + "/gradle")
     com("./gradlew", "bintrayUpload")
