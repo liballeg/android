@@ -1,4 +1,4 @@
-To use the Allegro Android binaries from Android Studio:
+To use the Allegro Android binaries from Android Studio 2.2:
 
 1. Create a new Android Studio NDK project
  * File->New, check the "Include C++ support" checkbox on the first dialog
