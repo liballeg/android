@@ -1,10 +1,10 @@
-This provides a script which will download the Linux Android SDK and
-build Allegro for you.
-
+To use the Allegro Android binaries from Android Studio:
 
 1. Create a new Android Studio NDK project
+ * File->New, check the "Include C++ support" checkbox on the first dialog
+ * Pick "Empty Activity" and uncheck "Generate Layout" and "Backwards Compatibility"
 
- Android Studio will create these files for you:
+  Android Studio will create these files in your new project's folder (among others):
 
  * app/src/main/java/.../MainActivity.java
  * app/src/main/cpp/native-lib.cpp
@@ -45,8 +45,6 @@ build Allegro for you.
  }
 ```
 
-5. Edit your C/C++ code to use Allegro and use CMakeLists.txt for the list of source
-files and extra dependencies. Hit Run in Android Studio and it will
+5. Replace app/src/main/native-lib.cpp with your game's C/C++ code, using Allegro. Use app/CMakeLists.txt to list all of your C/C++ source files and extra dependencies. Hit Run in Android Studio and it will
 deploy and run your Allegro game on the emulator or actual devices. Build an .apk and upload it to the
 store and it will just work!
-
