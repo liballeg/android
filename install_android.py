@@ -25,12 +25,12 @@ class Settings:
     freetype_url = "http://download.savannah.gnu.org/releases/freetype/freetype-2.7.tar.bz2"
     ogg_url = "http://downloads.xiph.org/releases/ogg/libogg-1.3.2.tar.xz"
     vorbis_url = "http://downloads.xiph.org/releases/vorbis/libvorbis-1.3.5.tar.xz"
-    version = "5.2.2.0"
     
 s = Settings()
 
 def main():
     global args
+    path = os.getcwd()
     p = argparse.ArgumentParser()
     p.add_argument("-i", "--no-install", action = "store_true")
     p.add_argument("-b", "--no-build", action = "store_true")
@@ -55,15 +55,40 @@ def main():
         install_freetype()
         install_ogg()
         install_vorbis()
+
+    if not args.no_build or not args.no_dist:
+        if not args.allegro:
+            print("Need -a option to build/distribute!")
+            return
+
+        os.chdir(path)
+        args.allegro = os.path.abspath(args.allegro)
+        print("Allegro found at", args.allegro)
+
+        parse_version()
+        if not s.version:
+            print("Cannot find version!")
+            return
         
     if not args.no_build:
-        if not args.allegro:
-            print("Need -a option to build!")
-            return
         build_allegro()
 
     if not args.no_dist:
+        print("Distributing version", s.version)
         build_aar()
+
+def parse_version():
+    x = [
+        "#define ALLEGRO_VERSION ",
+        "#define ALLEGRO_SUB_VERSION ",
+        "#define ALLEGRO_WIP_VERSION ",
+        "#define ALLEGRO_RELEASE_NUMBER "]
+    v = []
+    for row in open(args.allegro + "/include/allegro5/base.h"):
+        for i in range(4):
+            if row.startswith(x[i]):
+                v.append(row[len(x[i]):].strip(" \"\n"))
+    s.version = ".".join(v)
 
 def com(*args, input = None):
     args = [x for x in args if x is not None]
