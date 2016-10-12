@@ -14,7 +14,7 @@ To use the Allegro Android binaries from Android Studio 2.2:
 2. In your app/build.gradle, inside of dependencies {}, add this:
 
  ```
- compile 'org.liballeg:allegro5-release:5.2.0.0'
+ compile 'org.liballeg:allegro5-release:5.2.2.0'
  ```
  
 3. In your CMakeLists.txt, add this to the end:
