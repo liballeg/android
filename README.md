@@ -23,6 +23,7 @@ To use the Allegro Android binaries from Android Studio 2.2:
  set(NATIVE_LIB native-lib)
  include(build/intermediates/exploded-aar/org.liballeg/allegro5-release/5.2.2.0/assets/allegro.cmake)
  ```
+ Note: If you get an error message about allegro.cmake not being found (or just about cmake failing) - remove those two lines and do a rebuild (which will fail because it cannot find the Allegro headers). Then re-add those two lines and re-build again. This is because Android-Studio may not have unpacked the .aar file with allegro.cmake in it yet on the first run.
 
 4. Modify app/src/main/java/.../MainActivity.java like this:
 
