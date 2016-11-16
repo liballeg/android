@@ -38,6 +38,8 @@ def main():
     p.add_argument("-a", "--allegro", help = "path to allegro")
     p.add_argument("-p", "--path", help = "path to install to, by default current directory")
     p.add_argument("-A", "--arch", help = "comma separated list of architectures, by default all are built")
+    p.add_argument("-D", "--debug", action = "store_true", help = "build debug libraries")
+
     args = p.parse_args()
     if not args.path:
         args.path = os.getcwd()
@@ -133,6 +135,10 @@ def replace(name, what, whatwith):
     x = open(name, "r").read()
     x = x.replace(what, whatwith)
     open(name, "w").write(x)
+
+def rm(pattern):
+    for f in glob.glob(pattern):
+        os.unlink(f)
 
 def download(url, path):
     if not os.path.exists(path):
@@ -294,6 +300,8 @@ def build_allegro():
         print("Building Allegro for", arch)
         host, toolchain = setup_host(arch)
         build = args.path + "/build-android-" + arch
+        if args.debug:
+            build += "-debug"
         makedirs(build)
         chdir(build)
 
@@ -301,10 +309,13 @@ def build_allegro():
         if arch == "armeabi":
             extra = "-DWANT_ANDROID_LEGACY=on"
 
+        debug = "Release"
+        if args.debug:
+            debug = "Debug"
         com("cmake", args.allegro, "-DCMAKE_TOOLCHAIN_FILE=" +
             args.allegro + "/cmake/Toolchain-android.cmake",
             "-DARM_TARGETS=" + arch,
-            "-DCMAKE_BUILD_TYPE=Release",
+            "-DCMAKE_BUILD_TYPE=" + debug,
             "-DANDROID_TARGET=android-24",
             extra,
             "-DWANT_DEMO=off",
@@ -322,6 +333,9 @@ def build_allegro():
             "-DFREETYPE_INCLUDE_DIRS=" + toolchain + "/include;" + toolchain + "/include/freetype2",
             )
         com("make", "-j4")
+        # Get rid of previously installed files, so for example we get
+        # no debug libaries in a release build.
+        rm(toolchain + "/user/" + arch + "/lib/liballegro*")
         com("make", "install")
         
         restore_path()
@@ -407,6 +421,7 @@ buildscript {
     }
 }
 """)
+    debug = "debug" if args.debug else "release"
     write(allegro5 + "/build.gradle", """
 plugins {
     id "com.jfrog.bintray" version "1.7"
@@ -428,7 +443,7 @@ dependencies {
     compile fileTree(include: ['*.jar'], dir: 'libs')
     compile 'com.android.support:appcompat-v7:24.2.1'
 }
-archivesBaseName = "allegro5-release"
+archivesBaseName = "allegro5-«debug»"
 group = "org.liballeg"
 version = "«version»"
 task sourcesJar(type: Jar) {
@@ -450,11 +465,11 @@ artifacts {
 install {
     repositories.mavenInstaller {
         pom.project {
-            name 'allegro5-release'
+            name 'allegro5-«debug»'
             description 'Allegro for Android'
             url 'http://liballeg.org'
             inceptionYear '1995'
-            artifactId "allegro5-release"
+            artifactId "allegro5-«debug»"
 
             packaging 'aar'
             groupId 'org.liballeg'
@@ -494,7 +509,7 @@ bintray {
     configurations = ['archives']
     pkg {
         repo = 'maven'
-        name = 'allegro5-release'
+        name = 'allegro5-«debug»'
         userOrg = 'liballeg'
         licenses = ['zlib']
         vcsUrl = 'https://github.com/liballeg/allegro5.git'
@@ -504,7 +519,7 @@ bintray {
         publish = true
     }
 }
-""", {"version" : s.version})
+""", {"version" : s.version, "debug" : debug})
     write(args.path + "/gradle/settings.gradle", "include ':allegro5'")
     chdir(args.path + "/gradle")
     com("./gradlew", "bintrayUpload")
