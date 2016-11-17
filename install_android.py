@@ -39,6 +39,7 @@ def main():
     p.add_argument("-p", "--path", help = "path to install to, by default current directory")
     p.add_argument("-A", "--arch", help = "comma separated list of architectures, by default all are built")
     p.add_argument("-D", "--debug", action = "store_true", help = "build debug libraries")
+    p.add_argument("-E", "--extra", help = "extra version suffix")
 
     args = p.parse_args()
     if not args.path:
@@ -91,6 +92,8 @@ def parse_version():
             if row.startswith(x[i]):
                 v.append(row[len(x[i]):].strip(" \"\n"))
     s.version = ".".join(v)
+    if args.extra:
+        s.version += args.extra
 
 def com(*args, input = None):
     args = [x for x in args if x is not None]
