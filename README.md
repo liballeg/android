@@ -16,6 +16,7 @@ To use the Allegro Android binaries from Android Studio 2.2:
  ```
  compile 'org.liballeg:allegro5-release:5.2.2.0'
  ```
+ (you can also use -debug instead of -release to use a debug version of Allegro)
  
 3. In your CMakeLists.txt, add this to the end:
 
@@ -45,6 +46,7 @@ To use the Allegro Android binaries from Android Studio 2.2:
      }
  }
 ```
+ (if you used the debug version above, the libraries will be called "allegro-debug" and so on)
 
 5. Replace app/src/main/native-lib.cpp with your game's C/C++ code, using Allegro. Use app/CMakeLists.txt to list all of your C/C++ source files and extra dependencies. Hit Run in Android Studio and it will
 deploy and run your Allegro game on the emulator or actual devices. Build an .apk and upload it to the
