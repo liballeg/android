@@ -18,6 +18,10 @@ To use the Allegro Android binaries from Android Studio 2.2:
  ```
  (you can also use -debug instead of -release to use a debug version of Allegro)
  
+ This will make Android Studio download the .aar file from here: https://bintray.com/liballeg/maven
+ 
+ If you prefer, you can remove the "compile" line and download the .aar yourself and open with any zip program. Then copy the .jar and .so and .h files to where Android Studio can find them. Right now the .h files live in the "assets" folder which means they get distributed with the .apk, which wastes (a small bit of) space.
+ 
 3. In your CMakeLists.txt, add this to the end:
 
  ```
