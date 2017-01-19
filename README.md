@@ -14,7 +14,7 @@ To use the Allegro Android binaries from Android Studio 2.2:
 2. In your app/build.gradle, inside of dependencies {}, add this:
 
  ```
- compile 'org.liballeg:allegro5-release:5.2.2.0'
+ compile 'org.liballeg:allegro5-release:5.2.3.0'
  ```
  (you can also use -debug instead of -release to use a debug version of Allegro)
  
@@ -26,7 +26,7 @@ To use the Allegro Android binaries from Android Studio 2.2:
 
  ```
  set(NATIVE_LIB native-lib)
- include(build/intermediates/exploded-aar/org.liballeg/allegro5-release/5.2.2.0/assets/allegro.cmake)
+ include(build/intermediates/exploded-aar/org.liballeg/allegro5-release/5.2.3.0/assets/allegro.cmake)
  ```
  Note: If you get an error message about allegro.cmake not being found (or just about cmake failing) - remove those two lines and do a rebuild (which will fail because it cannot find the Allegro headers). Then re-add those two lines and re-build again. This is because Android-Studio may not have unpacked the .aar file with allegro.cmake in it yet on the first run.
 
@@ -55,3 +55,17 @@ To use the Allegro Android binaries from Android Studio 2.2:
 5. Replace app/src/main/native-lib.cpp with your game's C/C++ code, using Allegro. Use app/CMakeLists.txt to list all of your C/C++ source files and extra dependencies. Hit Run in Android Studio and it will
 deploy and run your Allegro game on the emulator or actual devices. Build an .apk and upload it to the
 store and it will just work!
+
+6. Fine-tuning
+
+* You can move the assets/\*/include folders somewhere else if you don't want them to be in your final .apk
+* If you don't want to compile all 7 architectures for your game, you can do somehting like this in your app/build.gradle:
+    ```
+    buildTypes {
+      debug { 
+         ndk {
+           abiFilters "x86", "armeabi-v7a", "armeabi"
+         }
+       }
+    }
+    ```
