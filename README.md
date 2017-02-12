@@ -59,7 +59,7 @@ store and it will just work!
 6. Fine-tuning
 
 * You can move the assets/\*/include folders somewhere else if you don't want them to be in your final .apk
-* If you don't want to compile all 7 architectures for your game, you can do somehting like this in your app/build.gradle:
+* If you don't want to compile all 7 architectures for your game, you can do something like this in your app/build.gradle:
     ```
     buildTypes {
       debug { 
