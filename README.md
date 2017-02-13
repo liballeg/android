@@ -58,7 +58,7 @@ To use the Allegro Android binaries from Android Studio 2.2:
 deploy and run your Allegro game on the emulator or actual devices. Build an .apk and upload it to the
 store and it will just work!
 
- To test that everything workd you can initially just paste the following code into the existing native-lib.cpp. It creates a display then fades it from red to yellow every second.
+ To test that everything works you can initially just paste the following code into the existing native-lib.cpp. It creates a display then fades it from red to yellow every second.
 
  ```c
   #include <allegro5/allegro5.h>
