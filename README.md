@@ -17,8 +17,10 @@ To use the Allegro Android binaries from Android Studio 2.2:
  compile 'org.liballeg:allegro5-release:5.2.3.0'
  ```
  (you can also use -debug instead of -release to use a debug version of Allegro)
- 
+  
  This will make Android Studio download the .aar file from here: https://bintray.com/liballeg/maven
+ 
+ Make sure to build your project after this before continuing with the next step, to force Android Studio to also unpack the file after downloading it.
  
  If you prefer, you can remove the "compile" line and download the .aar yourself and open with any zip program. Then copy the .jar and .so and .h files to where Android Studio can find them. Right now the .h files live in the "assets" folder which means they get distributed with the .apk, which wastes (a small bit of) space.
  
@@ -55,6 +57,35 @@ To use the Allegro Android binaries from Android Studio 2.2:
 5. Replace app/src/main/native-lib.cpp with your game's C/C++ code, using Allegro. Use app/CMakeLists.txt to list all of your C/C++ source files and extra dependencies. Hit Run in Android Studio and it will
 deploy and run your Allegro game on the emulator or actual devices. Build an .apk and upload it to the
 store and it will just work!
+
+To test that everything workd you can initially just paste the following code into the existing native-lib.cpp. It creates a display then fades it from red to yellow every second.
+```c
+#include <allegro5/allegro5.h>
+
+int main(int argc, char **argv) {
+    al_init();
+    auto display = al_create_display(0, 0);
+    auto queue = al_create_event_queue();
+    auto timer = al_create_timer(1 / 60.0);
+    auto redraw = true;
+    al_register_event_source(queue, al_get_display_event_source(display));
+    al_register_event_source(queue, al_get_timer_event_source(timer));
+    al_start_timer(timer);
+    while (true) {
+        if (redraw) {
+            al_clear_to_color(al_map_rgb_f(1, al_get_time() - (int)(al_get_time()), 0));
+            al_flip_display();
+            redraw = false;
+        }
+        ALLEGRO_EVENT event;
+        al_wait_for_event(queue, &event);
+        if (event.type == ALLEGRO_EVENT_TIMER) {
+            redraw = true;
+        }
+    }
+    return 0;
+}
+```
 
 6. Fine-tuning
 
