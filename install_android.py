@@ -11,8 +11,8 @@ import sys
 
 class Settings:
     jdk_url = "http://download.oracle.com/otn-pub/java/jdk/8u102-b14/jdk-8u102-linux-x64.tar.gz"
-    sdk_tgz_url = "https://dl.google.com/android/android-sdk_r24.4.1-linux.tgz"
-    ndk_zip_url = "https://dl.google.com/android/repository/android-ndk-r12b-linux-x86_64.zip"
+    sdk_tgz_url = "https://dl.google.com/android/repository/sdk-tools-linux-3859397.zip"
+    ndk_zip_url = "https://dl.google.com/android/repository/android-ndk-r14b-linux-x86_64.zip"
     min_api = {
         "armeabi" : "15",
         "armeabi-v7a" : "15",
@@ -173,7 +173,7 @@ def download_and_unpack(url):
             # doesn't preserve permissions in some python versions
             #with zipfile.ZipFile(name) as z:
             #    z.extractall(folder + ".part")
-            com("unzip", "-d", folder + ".part", name, "-q")
+            com("unzip", "-q", "-d", folder + ".part", name)
         else:
             tarfile.open(name).extractall(folder + ".part")
 
@@ -192,14 +192,13 @@ def setup_jdk():
 def install_sdk():
     components = [
         "platform-tools",
-        "build-tools-24.0.2",
-        "android-24",
-        "extra-android-m2repository"
+        "build-tools;25.0.3",
+        "platforms;android-25",
+        "extras;android;m2repository"
         ]
-    android = s.sdk + "/tools/android"
+    sdkmanager = s.sdk + "/bin/sdkmanager"
     for component in components:
-        com(android, "update", "sdk", "-u", "-a", "-t", component,
-            input = b"y\n")
+        com(sdkmanager, component)
 
 def install_ndk():
     for arch in s.architectures:
@@ -258,7 +257,7 @@ def setup_host(arch):
     set_var("PKG_CONFIG_LIBDIR", toolchain + "/lib")
     backup_path()
     add_path(s.ndk)
-    add_path(s.sdk + "/tools")
+    add_path(s.sdk)
     add_path(toolchain + "/bin")
 
     #com(host + "-gcc", "-v")
@@ -350,9 +349,9 @@ def build_aar():
     makedirs(allegro5 + "/src/main/java/org/liballeg")
     copy(args.allegro + "/android/allegro_activity/src",
         allegro5 + "/src/main/java/org/liballeg/android")
-    copy(s.sdk + "/tools/templates/gradle/wrapper/gradle",
+    copy(s.sdk + "/templates/gradle/wrapper/gradle",
         args.path + "/gradle/")
-    copy(s.sdk + "/tools/templates/gradle/wrapper/gradlew",
+    copy(s.sdk + "/templates/gradle/wrapper/gradlew",
         args.path + "/gradle/")
     replace(args.path + "/gradle/gradle/wrapper/gradle-wrapper.properties",
         "gradle-1.12-all.zip", "gradle-2.14.1-all.zip")
