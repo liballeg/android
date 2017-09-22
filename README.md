@@ -1,4 +1,4 @@
-To use the Allegro Android binaries from Android Studio 2.2:
+To use the Allegro Android binaries from Android Studio 3.0:
 
 1. Create a new Android Studio NDK project
  * Use "Start a new Android Studio project" from the welcome dialog or File->New from the menu
