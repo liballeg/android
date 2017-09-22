@@ -10,9 +10,10 @@ import glob
 import sys
 
 class Settings:
-    jdk_url = "http://download.oracle.com/otn-pub/java/jdk/8u102-b14/jdk-8u102-linux-x64.tar.gz"
+    jdk_url = "http://download.oracle.com/otn-pub/java/jdk/8u144-b01/090f390dda5b47b9b721c7dfaa008135/jdk-8u144-linux-x64.tar.gz"
     sdk_tgz_url = "https://dl.google.com/android/repository/sdk-tools-linux-3859397.zip"
-    ndk_zip_url = "https://dl.google.com/android/repository/android-ndk-r14b-linux-x86_64.zip"
+    ndk_zip_url = "https://dl.google.com/android/repository/android-ndk-r16-beta1-linux-x86_64.zip"
+
     min_api = {
         "armeabi" : "15",
         "armeabi-v7a" : "15",
@@ -25,6 +26,7 @@ class Settings:
     freetype_url = "http://download.savannah.gnu.org/releases/freetype/freetype-2.7.tar.bz2"
     ogg_url = "http://downloads.xiph.org/releases/ogg/libogg-1.3.2.tar.xz"
     vorbis_url = "http://downloads.xiph.org/releases/vorbis/libvorbis-1.3.5.tar.xz"
+    build_tools_version = "26.0.1"
     
 s = Settings()
 
@@ -48,7 +50,7 @@ def main():
 
     if args.arch:
         s.architectures = args.arch.split(",")
-    s.sdk = download_and_unpack(s.sdk_tgz_url)
+    s.sdk = download_and_unpack(s.sdk_tgz_url, "tools")
     s.ndk = download_and_unpack(s.ndk_zip_url)
     setup_jdk()
     
@@ -101,6 +103,7 @@ def com(*args, input = None):
     s.log.write(" ".join(args) + "\n")
     try:
         r = subprocess.run(args, check = True, input = input,
+            env = os.environ,
             stdout = subprocess.PIPE, stderr = subprocess.STDOUT)
     except subprocess.CalledProcessError as e:
         r = e
@@ -154,7 +157,7 @@ def download(url, path):
             f.write(r.read())
         os.rename(path + ".part", path)
 
-def download_and_unpack(url):
+def download_and_unpack(url, sub_folder = None):
     print("Checking", url)
     slash = url.rfind("/")
     name = args.path + "/" + url[slash + 1:]
@@ -164,24 +167,27 @@ def download_and_unpack(url):
     folder = name[:dot]
     if folder.endswith(".tar"):
         folder = folder[:-4]
-    if not os.path.exists(folder):
-        shutil.rmtree(folder + ".part", ignore_errors = True)
-        os.mkdir(folder + ".part")
+    target_folder = folder
+    if sub_folder:
+        target_folder += "/" + sub_folder
+    if not os.path.exists(target_folder):
+        shutil.rmtree(target_folder + ".part", ignore_errors = True)
+        os.makedirs(target_folder + ".part", exist_ok = True)
 
         print("Unpacking", name)
         if zipfile.is_zipfile(name):
             # doesn't preserve permissions in some python versions
             #with zipfile.ZipFile(name) as z:
             #    z.extractall(folder + ".part")
-            com("unzip", "-q", "-d", folder + ".part", name)
+            com("unzip", "-q", "-d", target_folder + ".part", name)
         else:
-            tarfile.open(name).extractall(folder + ".part")
+            tarfile.open(name).extractall(target_folder + ".part")
 
-        for sub in glob.glob(folder + ".part/*"):
+        for sub in glob.glob(target_folder + ".part/*"):
             if os.path.isdir(sub):
                 shutil.move(sub, folder)
                 break
-        os.rmdir(folder + ".part")
+        os.rmdir(target_folder + ".part")
 
     return folder
 
@@ -192,13 +198,13 @@ def setup_jdk():
 def install_sdk():
     components = [
         "platform-tools",
-        "build-tools;25.0.3",
-        "platforms;android-25",
+        "build-tools;" + s.build_tools_version,
+        "platforms;android-26",
         "extras;android;m2repository"
         ]
-    sdkmanager = s.sdk + "/bin/sdkmanager"
+    sdkmanager = s.sdk + "/tools/bin/sdkmanager"
     for component in components:
-        com(sdkmanager, component)
+        com(sdkmanager, component, "--sdk_root=" + s.sdk, input = b"y\n")
 
 def install_ndk():
     for arch in s.architectures:
@@ -214,10 +220,6 @@ def install_ndk():
         com("python", s.ndk + "/build/tools/make_standalone_toolchain.py",
             "--arch", arch2, "--api", s.min_api[arch],
             "--install-dir", toolchain)
-        # hack because cmake fails to find the 64-bit libs otherwise
-        if arch == "mips64":
-            com("mv", toolchain + "/sysroot/usr/lib", toolchain + "/sysroot/usr/lib-backup32")
-            copy(toolchain + "/sysroot/usr/lib64", toolchain + "/sysroot/usr/lib")
 
 def set_var(key, val):
     print(key + "=" + val)
@@ -253,8 +255,16 @@ def setup_host(arch):
         host = arch + "el-linux-android"
 
     set_var("ANDROID_NDK_ROOT", s.ndk)
+    set_var("ANDROID_HOME", s.sdk)
     set_var("ANDROID_NDK_TOOLCHAIN_ROOT", toolchain)
-    set_var("PKG_CONFIG_LIBDIR", toolchain + "/lib")
+    set_var("PKG_CONFIG_LIBDIR", toolchain + "/lib/pkgconfig")
+    if host == "arm-linux-androideabi":
+        # clang for arm crashes :(
+        set_var("CC", host + "-gcc")
+        set_var("CXX", host + "-g++")
+    else:
+        set_var("CC", host + "-clang")
+        set_var("CXX", host + "-clang++")
     backup_path()
     add_path(s.ndk)
     add_path(s.sdk)
@@ -285,7 +295,9 @@ def install_freetype():
     ft_orig = download_and_unpack(s.freetype_url)
     build_architectures(ft_orig, lambda host, toolchain:
         com("./configure", "--host=" + host, "--prefix=" + toolchain,
-            "--without-png", "--without-harfbuzz"))
+            "--without-png", "--without-harfbuzz",
+            "--with-zlib=no",
+            "--with-bzip2=no"))
 
 def install_ogg():
     ogg_orig = download_and_unpack(s.ogg_url)
@@ -294,6 +306,13 @@ def install_ogg():
 
 def install_vorbis():
     vorbis_orig = download_and_unpack(s.vorbis_url)
+    
+    # need to patch libvorbis 1.3.5 to work with clang on i386
+    print("Patching libvorbis 1.3.5")
+    b = open(vorbis_orig + "/configure").read()
+    b = b.replace("-mno-ieee-fp", "")
+    open(vorbis_orig + "/configure", "w").write(b)
+
     build_architectures(vorbis_orig, lambda host, toolchain:
         com("./configure", "--host=" + host, "--prefix=" + toolchain))
 
@@ -304,8 +323,15 @@ def build_allegro():
         build = args.path + "/build-android-" + arch
         if args.debug:
             build += "-debug"
+        shutil.rmtree(build, ignore_errors = True)
         makedirs(build)
         chdir(build)
+
+        # clang for arm crashes :(
+        copy(args.allegro + "/cmake/Toolchain-android.cmake", "toolchain.cmake")
+        if arch in ["armeabi", "armeabi-v7a"]:
+            replace("toolchain.cmake", "clang++", "g++")
+            replace("toolchain.cmake", "clang", "gcc")
 
         extra = None
         if arch == "armeabi":
@@ -314,11 +340,10 @@ def build_allegro():
         debug = "Release"
         if args.debug:
             debug = "Debug"
-        com("cmake", args.allegro, "-DCMAKE_TOOLCHAIN_FILE=" +
-            args.allegro + "/cmake/Toolchain-android.cmake",
+        com("cmake", args.allegro, "-DCMAKE_TOOLCHAIN_FILE=toolchain.cmake",
             "-DARM_TARGETS=" + arch,
             "-DCMAKE_BUILD_TYPE=" + debug,
-            "-DANDROID_TARGET=android-24",
+            "-DANDROID_TARGET=android-26",
             extra,
             "-DWANT_DEMO=off",
             "-DWANT_EXAMPLES=off",
@@ -334,7 +359,8 @@ def build_allegro():
             "-DFREETYPE_LIBRARY=" + toolchain + "/lib/libfreetype.a",
             "-DFREETYPE_INCLUDE_DIRS=" + toolchain + "/include;" + toolchain + "/include/freetype2",
             )
-        com("make", "-j4")
+            
+        com("make", "-j4", "VERBOSE=1")
         # Get rid of previously installed files, so for example we get
         # no debug libaries in a release build.
         rm(toolchain + "/user/" + arch + "/lib/liballegro*")
@@ -343,27 +369,20 @@ def build_allegro():
         restore_path()
 
 def build_aar():
-    shutil.rmtree(args.path + "/gradle", ignore_errors = True)
-    allegro5 = args.path + "/gradle/allegro5"
-    shutil.rmtree(allegro5 + "/src", ignore_errors = True)
-    makedirs(allegro5 + "/src/main/java/org/liballeg")
-    copy(args.allegro + "/android/allegro_activity/src",
-        allegro5 + "/src/main/java/org/liballeg/android")
-    copy(s.sdk + "/templates/gradle/wrapper/gradle",
-        args.path + "/gradle/")
-    copy(s.sdk + "/templates/gradle/wrapper/gradlew",
-        args.path + "/gradle/")
-    replace(args.path + "/gradle/gradle/wrapper/gradle-wrapper.properties",
-        "gradle-1.12-all.zip", "gradle-2.14.1-all.zip")
+    shutil.rmtree(args.path + "/gradle_project", ignore_errors = True)
+    copy(args.allegro + "/android/gradle_project", args.path + "/gradle_project")
+    
+    allegro5 = args.path + "/gradle_project/allegro"
+
     for arch in s.architectures:
         toolchain = args.path + "/toolchain-" + arch
         install = toolchain + "/user/" + arch
         makedirs(allegro5 + "/src/main/jniLibs")
         copy(install + "/lib", allegro5 + "/src/main/jniLibs/" + arch)
-        makedirs(allegro5 + "/src/main/assets/" + arch)
+        makedirs(allegro5 + "/src/main/assets/jniIncludes/" + arch)
         copy(install + "/include",
-            allegro5 + "/src/main/assets/" + arch + "/")
-    write(allegro5 + "/src/main/assets/allegro.cmake",
+            allegro5 + "/src/main/assets/jniIncludes/" + arch + "/")
+    write(allegro5 + "/src/main/assets/jniIncludes/allegro.cmake",
 """
 get_filename_component(ABI ${CMAKE_BINARY_DIR} NAME)
 set(base ${CMAKE_CURRENT_LIST_DIR})
@@ -376,7 +395,7 @@ endmacro()
 
 macro(allegro_library NAME)
     string(TOUPPER ${NAME} UNAME)
-    set(path ${base}/../jni/${ABI}/lib${NAME})
+    set(path ${base}/../../../transforms/stripDebugSymbol/debug/0/lib/${ABI}/lib${NAME})
     if(EXISTS "${path}-debug.so")
         set(LIB_${UNAME} ${path}-debug.so)
     elseif(EXISTS "${path}.so")
@@ -406,20 +425,21 @@ standard_library(GLESv2)
     package="org.liballeg.android">
 </manifest>
 """.lstrip())
-    write(args.path + "/gradle/gradle.properties", """
+    write(args.path + "/gradle_project/gradle.properties", """
 org.gradle.java.home={}
 """.format(s.jdk))
-    write(args.path + "/gradle/local.properties", """
+    write(args.path + "/gradle_project/local.properties", """
 ndk.dir={}
 sdk.dir={}
 """.format(s.ndk, s.sdk))
-    write(args.path + "/gradle/build.gradle", """
+    write(args.path + "/gradle_project/build.gradle", """
 buildscript {
     repositories {
         jcenter()
+        google()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:2.2.0'
+        classpath 'com.android.tools.build:gradle:2.3.3'
     }
 }
 """)
@@ -432,18 +452,17 @@ plugins {
 apply plugin: 'com.android.library'
 
 android {
-    compileSdkVersion 24
-    buildToolsVersion "24.0.2"
+    compileSdkVersion 26
+    buildToolsVersion "«build_tools_version»"
     defaultConfig {
         minSdkVersion 15
-        targetSdkVersion 24
+        targetSdkVersion 26
         versionCode 1
         versionName "«version»"
     }
 }
 dependencies {
-    compile fileTree(include: ['*.jar'], dir: 'libs')
-    compile 'com.android.support:appcompat-v7:24.2.1'
+    compile 'com.android.support:appcompat-v7:25.3.1'
 }
 archivesBaseName = "allegro5-«debug»"
 group = "org.liballeg"
@@ -460,10 +479,12 @@ task javadocJar(type: Jar, dependsOn: javadoc) {
     classifier = 'javadoc'
     from javadoc.destinationDir
 }
+
 artifacts {
     archives javadocJar
     archives sourcesJar
 }
+
 install {
     repositories.mavenInstaller {
         pom.project {
@@ -521,9 +542,9 @@ bintray {
         publish = true
     }
 }
-""", {"version" : s.version, "debug" : debug})
-    write(args.path + "/gradle/settings.gradle", "include ':allegro5'")
-    chdir(args.path + "/gradle")
+""", {"version" : s.version, "debug" : debug, "build_tools_version" : s.build_tools_version})
+    write(args.path + "/gradle_project/settings.gradle", "include ':allegro'")
+    chdir(args.path + "/gradle_project")
     com("./gradlew", "bintrayUpload")
 
 if __name__ == "__main__":
