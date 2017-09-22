@@ -1,4 +1,4 @@
-To use the Allegro Android binaries from Android Studio 3.0:
+To use the Allegro Android binaries from Android Studio 2 or 3:
 
 1. Create a new Android Studio NDK project
  * Use "Start a new Android Studio project" from the welcome dialog or File->New from the menu
@@ -23,8 +23,15 @@ To use the Allegro Android binaries from Android Studio 3.0:
 2. In your app/build.gradle, inside of dependencies {}, add this:
 
  ```
+ implementation 'org.liballeg:allegro5-release:5.2.3.0'
+ ```
+ 
+ or this for Android Studio 2:
+ 
+ ```
  compile 'org.liballeg:allegro5-release:5.2.3.0'
  ```
+ 
  (you can also use -debug instead of -release to use a debug version of Allegro)
 
  Sync your project. This will make Android Studio download the .aar file from here:
@@ -45,14 +52,13 @@ To use the Allegro Android binaries from Android Studio 3.0:
 
  ```
  set(NATIVE_LIB native-lib)
- include(build/intermediates/assets/jniIncludes/allegro.cmake)
+ include(build/intermediates/assets/debug/jniIncludes/allegro.cmake)
  ```
 
- In Android Studio 2.x it may instead be something like this (search
- your app/build folder for the location if neither works):
- ```
- include(build/intermediates/exploded-aar/org.liballeg/allegro5-release/5.2.3.0/assets/allegro.cmake)
- ```
+ Android Studio slightly changes that path from version to version though (search
+ your app/build folder for the location of allegro.cmake if neither works, or see
+ above about manually unpacking the .aar).
+ 
  Note: If you get an error message about allegro.cmake not being found
  (or just about cmake failing) - remove those two lines and do a rebuild
  (which will fail because it cannot find the Allegro headers).
