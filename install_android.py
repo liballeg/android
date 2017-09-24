@@ -395,7 +395,7 @@ endmacro()
 
 macro(allegro_library NAME)
     string(TOUPPER ${NAME} UNAME)
-    set(path ${base}/../../../transforms/stripDebugSymbol/debug/0/lib/${ABI}/lib${NAME})
+    set(path ${base}/${JNI_FOLDER}/${ABI}/lib${NAME})
     if(EXISTS "${path}-debug.so")
         set(LIB_${UNAME} ${path}-debug.so)
     elseif(EXISTS "${path}.so")

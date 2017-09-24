@@ -52,6 +52,7 @@ To use the Allegro Android binaries from Android Studio 2 or 3:
 
  ```
  set(NATIVE_LIB native-lib)
+ set(JNI_FOLDER ../../../transforms/stripDebugSymbol/debug/0/lib)
  include(build/intermediates/assets/debug/jniIncludes/allegro.cmake)
  ```
 
