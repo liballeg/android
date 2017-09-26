@@ -52,8 +52,8 @@ To use the Allegro Android binaries from Android Studio 2 or 3:
 
  ```
  set(NATIVE_LIB native-lib)
- set(JNI_FOLDER ../../../transforms/stripDebugSymbol/debug/0/lib)
- include(build/intermediates/assets/debug/allegro.cmake)
+ set(JNI_FOLDER ../../../../transforms/stripDebugSymbol/debug/0/lib)
+ include(build/intermediates/assets/debug/jniIncludes/allegro.cmake)
  ```
 
  Android Studio slightly changes that path from version to version though (search
