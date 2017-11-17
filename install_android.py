@@ -235,7 +235,7 @@ def backup_path():
 def restore_path():
     os.environ["PATH"] = s.backup_path
 
-def setup_host(arch):
+def setup_host(arch, no_clang = False):
     toolchain = args.path + "/toolchain-" + arch
     host = arch + "-linux-android"
 
@@ -258,8 +258,7 @@ def setup_host(arch):
     set_var("ANDROID_HOME", s.sdk)
     set_var("ANDROID_NDK_TOOLCHAIN_ROOT", toolchain)
     set_var("PKG_CONFIG_LIBDIR", toolchain + "/lib/pkgconfig")
-    if host == "arm-linux-androideabi":
-        # clang for arm crashes :(
+    if no_clang:
         set_var("CC", host + "-gcc")
         set_var("CXX", host + "-g++")
     else:
@@ -319,7 +318,11 @@ def install_vorbis():
 def build_allegro():
     for arch in s.architectures:
         print("Building Allegro for", arch)
-        host, toolchain = setup_host(arch)
+        
+        # clang for arm crashes trying to compile Allegro :(
+        no_clang = arch in ["armeabi", "armeabi-v7a"]
+        
+        host, toolchain = setup_host(arch, no_clang)
         build = args.path + "/build-android-" + arch
         if args.debug:
             build += "-debug"
