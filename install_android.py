@@ -22,7 +22,8 @@ class Settings:
         "arm64-v8a" : "21",
         "mips" : "15",
         "mips64" : "21"}
-    architectures = ["armeabi", "armeabi-v7a", "x86", "x86_64", "arm64-v8a", "mips", "mips64"]
+    architectures = ["armeabi", "armeabi-v7a", "x86", "x86_64", "arm64-v8a"]
+    # those two are supported by Android but no devices have been made in 10 years or so: , "mips", "mips64"]
     freetype_url = "http://download.savannah.gnu.org/releases/freetype/freetype-2.7.tar.bz2"
     ogg_url = "http://downloads.xiph.org/releases/ogg/libogg-1.3.2.tar.xz"
     vorbis_url = "http://downloads.xiph.org/releases/vorbis/libvorbis-1.3.5.tar.xz"
