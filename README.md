@@ -140,7 +140,7 @@ store and it will just work!
        }
     }
     ```
- * You will want to modify AndroidManifest.xml to have this attribute for the <activity> element or Allegro will crash:
+ * You will want to modify AndroidManifest.xml to have this attribute for the &lt;activity&gt; element or Allegro will crash:
     ```
     android:configChanges="orientation|keyboardHidden|screenLayout|uiMode|screenSize"
     ```
