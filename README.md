@@ -24,13 +24,13 @@ To use the Allegro Android binaries from Android Studio 2 or 3:
 2. In your app/build.gradle, inside of dependencies {}, add this:
 
  ```
- implementation 'org.liballeg:allegro5-release:5.2.3.0K'
+ implementation 'org.liballeg:allegro5-release:5.2.4.1A'
  ```
  
  or this for Android Studio 2:
  
  ```
- compile 'org.liballeg:allegro5-release:5.2.3.0K'
+ compile 'org.liballeg:allegro5-release:5.2.4.1A'
  ```
  
  In Android Studio in the "Android" view this file will be under "Gradle Scripts".
