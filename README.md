@@ -2,10 +2,8 @@ To use the Allegro Android binaries from Android Studio 2 or 3:
 
 1. Create a new Android Studio NDK project
  * Use "Start a new Android Studio project" from the welcome dialog or File->New from the menu
- * Check the "Include C++ support" checkbox on the first dialog
+ * Select C++ project (Or in AS 3.2 check the "Include C++ support" checkbox on the first dialog)
  * Leave minimum SDK at 15 on the second dialog
- * Pick "Empty Activity" on the next one
- * Keep "Generate Layout" and "Backwards Compatibility" checked
  * Leave the C++ settings at their defaults
  * Click "Finish"
 
@@ -24,13 +22,13 @@ To use the Allegro Android binaries from Android Studio 2 or 3:
 2. In your app/build.gradle, inside of dependencies {}, add this:
 
  ```
- implementation 'org.liballeg:allegro5-release:5.2.4.1A'
+ implementation 'org.liballeg:allegro5-release:5.2.5.0'
  ```
  
  or this for Android Studio 2:
  
  ```
- compile 'org.liballeg:allegro5-release:5.2.4.1A'
+ compile 'org.liballeg:allegro5-release:5.2.5.0'
  ```
  
  In Android Studio in the "Android" view this file will be under "Gradle Scripts".
@@ -55,8 +53,11 @@ To use the Allegro Android binaries from Android Studio 2 or 3:
 
  ```
  set(NATIVE_LIB native-lib)
- set(JNI_FOLDER ../../../transforms/stripDebugSymbol/debug/0/lib)
- include(build/intermediates/assets/debug/jniIncludes/allegro.cmake)
+ set(JNI_FOLDER ../../../../../transforms/stripDebugSymbol/debug/0/lib)
+ include(build/intermediates/merged_assets/debug/mergeDebugAssets/out/jniIncludes/allegro.cmake) 
+ # or for older Android Studio up to 3.2:
+ # set(JNI_FOLDER ../../../transforms/stripDebugSymbol/debug/0/lib)
+ # include(build/intermediates/assets/debug/jniIncludes/allegro.cmake)
  ```
 
  Android Studio slightly changes that path from version to version though (search
