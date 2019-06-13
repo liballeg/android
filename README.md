@@ -45,7 +45,7 @@ To use the Allegro Android binaries from Android Studio 2 or 3:
 
  Next install the Allegro headers:
 
- http://allegro5.org/android/5.2.6.0/allegro_jni_includes.zip
+ http://allegro5.org/android/5.2.6.0A/allegro_jni_includes.zip
 
  And unzip anywhere, for this example I will put it inside the project folder, so
  it will end up as app/src/main/allegro\_jni\_includes.
