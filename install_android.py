@@ -11,23 +11,21 @@ import sys
 
 class Settings:
     jdk_url = "http://download.oracle.com/otn-pub/java/jdk/8u144-b01/090f390dda5b47b9b721c7dfaa008135/jdk-8u144-linux-x64.tar.gz"
-    sdk_tgz_url = "https://dl.google.com/android/repository/sdk-tools-linux-3859397.zip"
-    ndk_zip_url = "https://dl.google.com/android/repository/android-ndk-r16-beta1-linux-x86_64.zip"
+    sdk_tgz_url = "https://dl.google.com/android/repository/sdk-tools-linux-4333796.zip"
+    ndk_zip_url = "https://dl.google.com/android/repository/android-ndk-r20-linux-x86_64.zip"
 
     min_api = {
-        "armeabi" : "15",
-        "armeabi-v7a" : "15",
-        "x86" : "15",
+        "armeabi-v7a" : "17",
+        "x86" : "17",
         "x86_64" : "21",
-        "arm64-v8a" : "21",
-        "mips" : "15",
-        "mips64" : "21"}
-    architectures = ["armeabi", "armeabi-v7a", "x86", "x86_64", "arm64-v8a"]
-    # those two are supported by Android but no devices have been made in 10 years or so: , "mips", "mips64"]
+        "arm64-v8a" : "21"
+        }
+    # see https://developer.android.com/ndk/guides/abis.html
+    architectures = ["armeabi-v7a", "x86", "x86_64", "arm64-v8a"]
     freetype_url = "http://download.savannah.gnu.org/releases/freetype/freetype-2.7.tar.bz2"
     ogg_url = "http://downloads.xiph.org/releases/ogg/libogg-1.3.2.tar.xz"
     vorbis_url = "http://downloads.xiph.org/releases/vorbis/libvorbis-1.3.5.tar.xz"
-    build_tools_version = "26.0.1"
+    build_tools_version = "28.0.0"
     
 s = Settings()
 
@@ -35,12 +33,13 @@ def main():
     global args
     path = os.getcwd()
     p = argparse.ArgumentParser()
-    p.add_argument("-i", "--no-install", action = "store_true")
-    p.add_argument("-b", "--no-build", action = "store_true")
-    p.add_argument("-d", "--no-dist", action = "store_true")
+    p.add_argument("-i", "--install", action = "store_true")
+    p.add_argument("-b", "--build", action = "store_true")
+    p.add_argument("-p", "--package", action = "store_true")
+    p.add_argument("-d", "--dist", action = "store_true")
     p.add_argument("-a", "--allegro", help = "path to allegro")
-    p.add_argument("-p", "--path", help = "path to install to, by default current directory")
-    p.add_argument("-A", "--arch", help = "comma separated list of architectures, by default all are built")
+    p.add_argument("-P", "--path", help = "path to install to, by default current directory")
+    p.add_argument("-A", "--arch", help = "comma separated list of architectures, by default all are built: " + (", ".join(Settings.architectures)))
     p.add_argument("-D", "--debug", action = "store_true", help = "build debug libraries")
     p.add_argument("-E", "--extra", help = "extra version suffix")
 
@@ -50,21 +49,26 @@ def main():
     s.log = open(args.path + "/install_android.log", "w")
 
     if args.arch:
-        s.architectures = args.arch.split(",")
+        archs = args.arch.split(",")
+        for a in archs:
+            if a not in s.architectures:
+                sys.stderr.write("Unknown architecture " + a + "\n")
+                sys.exit(-1)
+        s.architectures = archs
     s.sdk = download_and_unpack(s.sdk_tgz_url, "tools")
     s.ndk = download_and_unpack(s.ndk_zip_url)
     setup_jdk()
     
-    if not args.no_install:
+    if args.install:
         install_sdk()
         install_ndk()
         install_freetype()
         install_ogg()
         install_vorbis()
 
-    if not args.no_build or not args.no_dist:
+    if args.build or args.package:
         if not args.allegro:
-            print("Need -a option to build/distribute!")
+            print("Need -a option to build/package!")
             return
 
         os.chdir(path)
@@ -76,11 +80,11 @@ def main():
             print("Cannot find version!")
             return
         
-    if not args.no_build:
+    if args.build:
         build_allegro()
 
-    if not args.no_dist:
-        print("Distributing version", s.version)
+    if args.package:
+        print("Packaging version", s.version)
         build_aar()
 
 def parse_version():
@@ -200,8 +204,7 @@ def install_sdk():
     components = [
         "platform-tools",
         "build-tools;" + s.build_tools_version,
-        "platforms;android-26",
-        "extras;android;m2repository"
+        "platforms;android-28"
         ]
     sdkmanager = s.sdk + "/tools/bin/sdkmanager"
     for component in components:
@@ -209,18 +212,11 @@ def install_sdk():
 
 def install_ndk():
     for arch in s.architectures:
-        toolchain = args.path + "/toolchain-" + arch
-        if os.path.exists(toolchain):
+        install = args.path + "output-" + arch.replace(" ", "_")
+        if os.path.exists(install):
             continue
-        print("Creating toolchain for", arch)
-        arch2 = arch
-        if arch2 in ["armeabi", "armeabi-v7a"]:
-            arch2 = "arm"
-        if arch2 == "arm64-v8a":
-            arch2 = "arm64"
-        com("python", s.ndk + "/build/tools/make_standalone_toolchain.py",
-            "--arch", arch2, "--api", s.min_api[arch],
-            "--install-dir", toolchain)
+        print("Creating installation for", arch)
+        com("mkdir", install)
 
 def set_var(key, val):
     print(key + "=" + val)
@@ -236,35 +232,37 @@ def backup_path():
 def restore_path():
     os.environ["PATH"] = s.backup_path
 
-def setup_host(arch, no_clang = False):
-    toolchain = args.path + "/toolchain-" + arch
-    host = arch + "-linux-android"
+# see https://developer.android.com/ndk/guides/other_build_systems
+def setup_host(arch):
+    toolchain = s.ndk + "/toolchains/llvm/prebuilt/linux-x86_64" # this is the host architecture, not what we are building
 
+    host2 = None
     if arch == "x86":
         host = "i686-linux-android"
     if arch == "x86_64":
         host = arch + "-linux-android"
-    if arch == "armeabi":
-        host = "arm-linux-androideabi"
     if arch == "armeabi-v7a":
         host = "arm-linux-androideabi"
+        host2 = "armv7a-linux-androideabi"
     if arch == "arm64-v8a":
         host = "aarch64-linux-android"
-    if arch == "mips":
-        host = arch + "el-linux-android"
-    if arch == "mips64":
-        host = arch + "el-linux-android"
+    if host2 is None:
+        host2 = host
+
+    minsdk = s.min_api[arch]
 
     set_var("ANDROID_NDK_ROOT", s.ndk)
     set_var("ANDROID_HOME", s.sdk)
     set_var("ANDROID_NDK_TOOLCHAIN_ROOT", toolchain)
     set_var("PKG_CONFIG_LIBDIR", toolchain + "/lib/pkgconfig")
-    if no_clang:
-        set_var("CC", host + "-gcc")
-        set_var("CXX", host + "-g++")
-    else:
-        set_var("CC", host + "-clang")
-        set_var("CXX", host + "-clang++")
+    set_var("AR", toolchain + "/bin/" + host + "-ar")
+    set_var("AS", toolchain + "/bin/" + host + "-as")
+    set_var("LD", toolchain + "/bin/" + host + "-ld")
+    set_var("RANLIB", toolchain + "/bin/" + host + "-ranlib")
+    set_var("STRIP", toolchain + "/bin/" + host + "-strip")
+    set_var("CC", toolchain + "/bin/" + host2 + minsdk + "-clang")
+    set_var("CXX", toolchain + "/bin/" + host2 + minsdk + "-clang++")
+    set_var("CFLAGS", "-fPIC")
     backup_path()
     add_path(s.ndk)
     add_path(s.sdk)
@@ -272,29 +270,29 @@ def setup_host(arch, no_clang = False):
 
     #com(host + "-gcc", "-v")
 
-    return host, toolchain
+    return host, args.path + "/output-" + arch.replace(" ", "_")
 
 def build_architectures(path, configure):
     slash = path.rfind("/")
     name = path[slash + 1:]
     for arch in s.architectures:
         print("Building", path, "for", arch)
-        host, toolchain = setup_host(arch)
+        host, install = setup_host(arch)
         
-        destination = toolchain + "/" + name
+        destination = install + "/build/" + name
         if not os.path.exists(destination):
             shutil.copytree(path, destination)
         chdir(destination)
         
-        configure(host, toolchain)
+        configure(host, install)
         com("make", "-j4")
         com("make", "install")
         restore_path()
 
 def install_freetype():
     ft_orig = download_and_unpack(s.freetype_url)
-    build_architectures(ft_orig, lambda host, toolchain:
-        com("./configure", "--host=" + host, "--prefix=" + toolchain,
+    build_architectures(ft_orig, lambda host, install:
+        com("./configure", "--host=" + host, "--prefix=" + install,
             "--without-png", "--without-harfbuzz",
             "--with-zlib=no",
             "--with-bzip2=no"))
@@ -320,10 +318,7 @@ def build_allegro():
     for arch in s.architectures:
         print("Building Allegro for", arch)
         
-        # clang for arm crashes trying to compile Allegro :(
-        no_clang = arch in ["armeabi", "armeabi-v7a"]
-        
-        host, toolchain = setup_host(arch, no_clang)
+        host, install = setup_host(arch)
         build = args.path + "/build-android-" + arch
         if args.debug:
             build += "-debug"
@@ -331,11 +326,7 @@ def build_allegro():
         makedirs(build)
         chdir(build)
 
-        # clang for arm crashes :(
-        copy(args.allegro + "/cmake/Toolchain-android.cmake", "toolchain.cmake")
-        if arch in ["armeabi", "armeabi-v7a"]:
-            replace("toolchain.cmake", "clang++", "g++")
-            replace("toolchain.cmake", "clang", "gcc")
+        cmake_toolchain = s.ndk + "/build/cmake/android.toolchain.cmake"
 
         extra = None
         if arch == "armeabi":
@@ -344,30 +335,31 @@ def build_allegro():
         debug = "Release"
         if args.debug:
             debug = "Debug"
-        com("cmake", args.allegro, "-DCMAKE_TOOLCHAIN_FILE=toolchain.cmake",
-            "-DARM_TARGETS=" + arch,
+        com("cmake", args.allegro, "-DCMAKE_TOOLCHAIN_FILE=" + cmake_toolchain,
+            "-DANDROID_ABI=" + arch,
             "-DCMAKE_BUILD_TYPE=" + debug,
             "-DANDROID_TARGET=android-26",
+            "-DCMAKE_INSTALL_PREFIX=" + install,
             extra,
             "-DWANT_DEMO=off",
             "-DWANT_EXAMPLES=off",
             "-DWANT_TESTS=off",
             "-DWANT_DOCS=off",
             "-DPKG_CONFIG_EXECUTABLE=/usr/bin/pkg-config",
-            "-DOGG_LIBRARY=" + toolchain + "/lib/libogg.a",
-            "-DOGG_INCLUDE_DIR=" + toolchain + "/include",
-            "-DVORBIS_LIBRARY=" + toolchain + "/lib/libvorbis.a",
-            "-DVORBISFILE_LIBRARY=" + toolchain + "/lib/libvorbisfile.a",
-            "-DVORBIS_INCLUDE_DIR=" + toolchain + "/include",
+            "-DOGG_LIBRARY=" + install + "/lib/libogg.a",
+            "-DOGG_INCLUDE_DIR=" + install + "/include",
+            "-DVORBIS_LIBRARY=" + install + "/lib/libvorbis.a",
+            "-DVORBISFILE_LIBRARY=" + install + "/lib/libvorbisfile.a",
+            "-DVORBIS_INCLUDE_DIR=" + install + "/include",
             "-DSUPPORT_VORBIS=true",
-            "-DFREETYPE_LIBRARY=" + toolchain + "/lib/libfreetype.a",
-            "-DFREETYPE_INCLUDE_DIRS=" + toolchain + "/include;" + toolchain + "/include/freetype2",
+            "-DFREETYPE_LIBRARY=" + install + "/lib/libfreetype.a",
+            "-DFREETYPE_INCLUDE_DIRS=" + install + "/include;" + install + "/include/freetype2",
             )
             
         com("make", "-j4", "VERBOSE=1")
         # Get rid of previously installed files, so for example we get
         # no debug libaries in a release build.
-        rm(toolchain + "/user/" + arch + "/lib/liballegro*")
+        rm(install + "/lib/liballegro*")
         com("make", "install")
         
         restore_path()
@@ -377,16 +369,20 @@ def build_aar():
     copy(args.allegro + "/android/gradle_project", args.path + "/gradle_project")
     
     allegro5 = args.path + "/gradle_project/allegro"
+    includes = args.path + "/gradle_project/allegro_jni_includes"
 
     for arch in s.architectures:
-        toolchain = args.path + "/toolchain-" + arch
-        install = toolchain + "/user/" + arch
-        makedirs(allegro5 + "/src/main/jniLibs")
-        copy(install + "/lib", allegro5 + "/src/main/jniLibs/" + arch)
-        makedirs(allegro5 + "/src/main/assets/jniIncludes/" + arch)
-        copy(install + "/include",
-            allegro5 + "/src/main/assets/jniIncludes/" + arch + "/")
-    write(allegro5 + "/src/main/assets/jniIncludes/allegro.cmake",
+        install = args.path + "/output-" + arch.replace(" ", "_")
+        makedirs(allegro5 + "/src/main/jniLibs/" + arch)
+        for so in glob.glob(install + "/lib/liballeg*"):
+            copy(so, allegro5 + "/src/main/jniLibs/" + arch + "/")
+    
+    makedirs(includes + "/jniIncludes")
+    # Note: the Allegro headers are the same for all architectures, so just copy from the first one
+    copy(args.path + "/output-" + s.architectures[0] + "/include/allegro5",   includes + "/jniIncludes/")
+    copy(allegro5 + "/src/main/jniLibs", includes)
+
+    write(includes + "/allegro.cmake",
 """
 get_filename_component(ABI ${CMAKE_BINARY_DIR} NAME)
 set(base ${CMAKE_CURRENT_LIST_DIR})
@@ -399,7 +395,7 @@ endmacro()
 
 macro(allegro_library NAME)
     string(TOUPPER ${NAME} UNAME)
-    set(path ${base}/${JNI_FOLDER}/${ABI}/lib${NAME})
+    set(path ${JNI_FOLDER}/jniLibs/${ABI}/lib${NAME})
     if(EXISTS "${path}-debug.so")
         set(LIB_${UNAME} ${path}-debug.so)
     elseif(EXISTS "${path}.so")
@@ -410,7 +406,7 @@ macro(allegro_library NAME)
     target_link_libraries(${NATIVE_LIB} ${LIB_${UNAME}})
 endmacro()
 
-include_directories(${base}/${ABI}/include)
+include_directories(${JNI_FOLDER}/jniIncludes)
 allegro_library(allegro)
 allegro_library(allegro_acodec)
 allegro_library(allegro_audio)
@@ -439,11 +435,11 @@ sdk.dir={}
     write(args.path + "/gradle_project/build.gradle", """
 buildscript {
     repositories {
-        jcenter()
         google()
+        jcenter()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:2.3.3'
+        classpath 'com.android.tools.build:gradle:3.1.0'
     }
 }
 """)
@@ -456,17 +452,20 @@ plugins {
 apply plugin: 'com.android.library'
 
 android {
-    compileSdkVersion 26
-    buildToolsVersion "«build_tools_version»"
+    compileSdkVersion 28
     defaultConfig {
-        minSdkVersion 15
-        targetSdkVersion 26
+        minSdkVersion 17
+        targetSdkVersion 28
         versionCode 1
         versionName "«version»"
     }
 }
+repositories {
+    google()
+    jcenter()
+}
 dependencies {
-    compile 'com.android.support:appcompat-v7:25.3.1'
+    implementation 'com.android.support:appcompat-v7:28.0.0'
 }
 archivesBaseName = "allegro5-«debug»"
 group = "org.liballeg"
@@ -548,8 +547,14 @@ bintray {
 }
 """, {"version" : s.version, "debug" : debug, "build_tools_version" : s.build_tools_version})
     write(args.path + "/gradle_project/settings.gradle", "include ':allegro'")
+   
     chdir(args.path + "/gradle_project")
-    com("./gradlew", "bintrayUpload")
+    com("zip", "-r", "allegro_jni_includes.zip", "allegro_jni_includes")
+
+    if args.dist:
+        com("./gradlew", "bintrayUpload")
+        makedirs("/var/www/allegro5.org/android/" + s.version)
+        copy("allegro_jni_includes.zip", "/var/www/allegro5.org/android/" + s.version)
 
 if __name__ == "__main__":
     main()

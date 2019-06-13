@@ -12,7 +12,7 @@ To use the Allegro Android binaries from Android Studio 2 or 3:
  * app/src/main/java/.../MainActivity.java
  * app/src/main/cpp/native-lib.cpp
  * app/build.gradle
- * app/CMakeLists.txt
+ * app/src/main/cpp/CMakeLists.txt
 
  Run your project, just to make sure everything works right in your
  Android Studio installation and with your emulator and/or test device.
@@ -22,53 +22,41 @@ To use the Allegro Android binaries from Android Studio 2 or 3:
 2. In your app/build.gradle, inside of dependencies {}, add this:
 
  ```
- implementation 'org.liballeg:allegro5-release:5.2.5.0'
+ implementation 'org.liballeg:allegro5-release:5.2.6.0'
  ```
  
  or this for Android Studio 2:
  
  ```
- compile 'org.liballeg:allegro5-release:5.2.5.0'
+ compile 'org.liballeg:allegro5-release:5.2.6.0'
  ```
  
  In Android Studio in the "Android" view this file will be under "Gradle Scripts".
  
  (you can also use -debug instead of -release to use a debug version of Allegro)
 
- Sync your project (Tools->Android). This will make Android Studio download the .aar file from here:
+ Sync your project (Tools-\>Android). This will make Android Studio download the .aar file from here:
 
  https://bintray.com/liballeg/maven
  
- Make sure to build and run your project after this.
- (It will force Android Studio to unpack the .aar file after downloading it.)
- It should run the sample project again, unmodified from step 1.
- 
  If you prefer, you can remove the implementation/compile line and download the .aar
- yourself and open with any zip program. Then copy the .jar and .so and .h
- files to where Android Studio can find them. Right now the .h files live
- in the "assets" folder which means they get distributed with the .apk,
- which wastes (a small bit of) space.
+ yourself and open with any zip program. Then copy the .jar and .so files to where
+ Android Studio can find them.
+
+ Next install the Allegro headers:
+
+ https://allegro5.org/android/5.2.6.0/allegro\_jni\_includes.zip
+
+ And unzip anywhere, for this example I will put it inside the project folder, so
+ it will end up as app/src/main/allegro\_jni\_includes.
  
 3. In your CMakeLists.txt (under External Build Files in Android Studio), add this to the end and sync:
 
  ```
  set(NATIVE_LIB native-lib)
- set(JNI_FOLDER ../../../../../transforms/stripDebugSymbol/debug/0/lib)
- include(build/intermediates/merged_assets/debug/mergeDebugAssets/out/jniIncludes/allegro.cmake) 
- # or for older Android Studio up to 3.2:
- # set(JNI_FOLDER ../../../transforms/stripDebugSymbol/debug/0/lib)
- # include(build/intermediates/assets/debug/jniIncludes/allegro.cmake)
+ set(JNI_FOLDER ${PROJECT_SOURCE_DIR}/../allegro_jni_includes) # or wherever you put it
+ include(${JNI_FOLDER}/allegro.cmake)
  ```
-
- Android Studio slightly changes that path from version to version though (search
- your app/build folder for the location of allegro.cmake if neither works, or see
- above about manually unpacking the .aar).
- 
- Note: If you get an error message about allegro.cmake not being found
- (or just about cmake failing) - remove those three lines and do a rebuild
- (which will fail because it cannot find the Allegro headers).
- Then re-add those three lines and re-build again. This is because
- Android-Studio may not have unpacked the .aar file with allegro.cmake in it yet on the first run.
 
 4. Modify app/src/main/java/.../MainActivity.java like this:
  (Keep the original package name in the first line.)
@@ -130,13 +118,12 @@ store and it will just work!
 
 6. Fine-tuning
 
-* You can move the assets/\*/include folders somewhere else if you don't want them to be in your final .apk
 * If you don't want to compile all the architectures for your game, you can do something like this in your app/build.gradle:
     ```
     buildTypes {
       debug { 
          ndk {
-           abiFilters "x86", "armeabi-v7a", "armeabi"
+           abiFilters "armeabi-v7a""
          }
        }
     }
