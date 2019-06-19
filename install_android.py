@@ -10,12 +10,12 @@ import glob
 import sys
 
 class Settings:
-    jdk_url = "http://download.oracle.com/otn-pub/java/jdk/8u144-b01/090f390dda5b47b9b721c7dfaa008135/jdk-8u144-linux-x64.tar.gz"
+    jdk_url="http://download.oracle.com/otn-pub/java/jdk/8u131-b11/d54c1d3a095b4ff2b6607d096fa80163/jdk-8u131-linux-x64.tar.gz"
     sdk_tgz_url = "https://dl.google.com/android/repository/sdk-tools-linux-4333796.zip"
     ndk_zip_url = "https://dl.google.com/android/repository/android-ndk-r20-linux-x86_64.zip"
 
     min_api = {
-        "armeabi-v7a" : "17",
+        "armeabi-v7a" : "16",
         "x86" : "17",
         "x86_64" : "21",
         "arm64-v8a" : "21"
@@ -25,6 +25,14 @@ class Settings:
     freetype_url = "http://download.savannah.gnu.org/releases/freetype/freetype-2.7.tar.bz2"
     ogg_url = "http://downloads.xiph.org/releases/ogg/libogg-1.3.2.tar.xz"
     vorbis_url = "http://downloads.xiph.org/releases/vorbis/libvorbis-1.3.5.tar.xz"
+    #png_url = "https://download.sourceforge.net/libpng/libpng-1.6.37.tar.xz"
+    physfs_url = "https://icculus.org/physfs/downloads/physfs-3.0.2.tar.bz2"
+    flac_url = "https://ftp.osuosl.org/pub/xiph/releases/flac/flac-1.3.2.tar.xz"
+    opus_url = "https://archive.mozilla.org/pub/opus/opus-1.3.1.tar.gz"
+    opusfile_url = "https://archive.mozilla.org/pub/opus/opusfile-0.9.tar.gz"
+    dumb_url = "https://github.com/kode54/dumb/archive/master.zip", "dumb.zip"
+    minimp3_url = "https://github.com/lieff/minimp3/archive/master.zip", "minimp3.zip"
+    #theora_url = "https://git.xiph.org/?p=theora.git;a=snapshot;h=HEAD;sf=tgz", "theora.tar.gz"
     build_tools_version = "28.0.0"
     
 s = Settings()
@@ -65,6 +73,14 @@ def main():
         install_freetype()
         install_ogg()
         install_vorbis()
+        # not supported on Android right now, always uses native png()
+        install_physfs()
+        install_flac()
+        install_opus()
+        install_opusfile()
+        install_dumb()
+        install_minimp3()
+        # can't get it to compile for android install_theora()
 
     if args.build or args.package:
         if not args.allegro:
@@ -163,9 +179,14 @@ def download(url, path):
         os.rename(path + ".part", path)
 
 def download_and_unpack(url, sub_folder = None):
+    if type(url) is tuple:
+        url, dest = url
+    else:
+        slash = url.rfind("/")
+        dest = url[slash + 1:]
     print("Checking", url)
-    slash = url.rfind("/")
-    name = args.path + "/" + url[slash + 1:]
+    os.makedirs(args.path + "/downloads", exist_ok = True)
+    name = args.path + "/downloads/" + dest
     download(url, name)
 
     dot = name.rfind(".")
@@ -198,7 +219,7 @@ def download_and_unpack(url, sub_folder = None):
 
 def setup_jdk():
     s.jdk = download_and_unpack(s.jdk_url)
-    set_var("JAVA_HOME", s.jdk)
+    set_var("JAVA_HOME", s.jdk + "/jre")
 
 def install_sdk():
     components = [
@@ -250,11 +271,13 @@ def setup_host(arch):
         host2 = host
 
     minsdk = s.min_api[arch]
+    install = args.path + "/output-" + arch.replace(" ", "_")
 
     set_var("ANDROID_NDK_ROOT", s.ndk)
     set_var("ANDROID_HOME", s.sdk)
     set_var("ANDROID_NDK_TOOLCHAIN_ROOT", toolchain)
     set_var("PKG_CONFIG_LIBDIR", toolchain + "/lib/pkgconfig")
+    set_var("PKG_CONFIG_PATH", install + "/lib/pkgconfig")
     set_var("AR", toolchain + "/bin/" + host + "-ar")
     set_var("AS", toolchain + "/bin/" + host + "-as")
     set_var("LD", toolchain + "/bin/" + host + "-ld")
@@ -270,7 +293,7 @@ def setup_host(arch):
 
     #com(host + "-gcc", "-v")
 
-    return host, args.path + "/output-" + arch.replace(" ", "_")
+    return host, install
 
 def build_architectures(path, configure):
     slash = path.rfind("/")
@@ -284,23 +307,38 @@ def build_architectures(path, configure):
             shutil.copytree(path, destination)
         chdir(destination)
         
-        configure(host, install)
+        configure(arch, host, install)
+        restore_path()
+
+def configure_f(*extras):
+    def f(arch, host, prefix):
+        if not os.path.exists("configure"):
+            com("./autogen.sh")
+        com("./configure", "--host=" + host, "--prefix=" + prefix, *extras)
         com("make", "-j4")
         com("make", "install")
-        restore_path()
+    return f
+
+def cmake_f(*extras):
+    cmake_toolchain = s.ndk + "/build/cmake/android.toolchain.cmake"
+    def f(arch, host, prefix):
+        com("cmake", "-DCMAKE_TOOLCHAIN_FILE=" + cmake_toolchain,
+            "-DANDROID_ABI=" + arch,
+            "-DCMAKE_INSTALL_PREFIX=" + prefix,
+            *extras)
+        com("make", "-j4")
+        com("make", "install")
+    return f
 
 def install_freetype():
     ft_orig = download_and_unpack(s.freetype_url)
-    build_architectures(ft_orig, lambda host, install:
-        com("./configure", "--host=" + host, "--prefix=" + install,
-            "--without-png", "--without-harfbuzz",
+    build_architectures(ft_orig, configure_f("--without-png", "--without-harfbuzz",
             "--with-zlib=no",
             "--with-bzip2=no"))
 
 def install_ogg():
     ogg_orig = download_and_unpack(s.ogg_url)
-    build_architectures(ogg_orig, lambda host, toolchain:
-        com("./configure", "--host=" + host, "--prefix=" + toolchain))
+    build_architectures(ogg_orig, configure_f())
 
 def install_vorbis():
     vorbis_orig = download_and_unpack(s.vorbis_url)
@@ -311,15 +349,53 @@ def install_vorbis():
     b = b.replace("-mno-ieee-fp", "")
     open(vorbis_orig + "/configure", "w").write(b)
 
-    build_architectures(vorbis_orig, lambda host, toolchain:
-        com("./configure", "--host=" + host, "--prefix=" + toolchain))
+    build_architectures(vorbis_orig, configure_f())
+
+def install_png():
+    png_orig = download_and_unpack(s.png_url)
+    build_architectures(png_orig, configure_f())
+
+def install_physfs():
+    physfs_orig = download_and_unpack(s.physfs_url)
+    build_architectures(physfs_orig, cmake_f("-DPHYSFS_BUILD_SHARED=OFF"))
+
+def install_flac():
+    flac_orig = download_and_unpack(s.flac_url)
+    build_architectures(flac_orig, configure_f(
+            "--disable-cpplibs", "--disable-shared", "--enable-static", "--disable-ogg"))
+
+def install_opus():
+    opus_orig = download_and_unpack(s.opus_url)
+    build_architectures(opus_orig, configure_f(
+            "--disable-shared", "--enable-static"))
+
+def install_opusfile():
+    orig = download_and_unpack(s.opusfile_url)
+    build_architectures(orig, configure_f(
+            "--disable-shared", "--enable-static"))
+
+def install_dumb():
+    dumb_orig = download_and_unpack(s.dumb_url)
+    build_architectures(dumb_orig, cmake_f("-DBUILD_EXAMPLES=OFF", "-DBUILD_ALLEGRO4=OFF"))
+
+def install_minimp3():
+    orig = download_and_unpack(s.minimp3_url)
+    def f(arch, host, install):
+        com("cp", "minimp3.h", install + "/include/")
+        com("cp", "minimp3_ex.h", install + "/include/")
+    build_architectures(orig, f)
+
+def install_theora():
+    orig = download_and_unpack(s.theora_url)
+    build_architectures(orig, configure_f(
+            "--disable-shared", "--enable-static"))
 
 def build_allegro():
     for arch in s.architectures:
         print("Building Allegro for", arch)
         
         host, install = setup_host(arch)
-        build = args.path + "/build-android-" + arch
+        build = install + "/build/allegro"
         if args.debug:
             build += "-debug"
         shutil.rmtree(build, ignore_errors = True)
@@ -335,6 +411,7 @@ def build_allegro():
         debug = "Release"
         if args.debug:
             debug = "Debug"
+        include = install + "/include"
         com("cmake", args.allegro, "-DCMAKE_TOOLCHAIN_FILE=" + cmake_toolchain,
             "-DANDROID_ABI=" + arch,
             "-DCMAKE_BUILD_TYPE=" + debug,
@@ -347,13 +424,27 @@ def build_allegro():
             "-DWANT_DOCS=off",
             "-DPKG_CONFIG_EXECUTABLE=/usr/bin/pkg-config",
             "-DOGG_LIBRARY=" + install + "/lib/libogg.a",
-            "-DOGG_INCLUDE_DIR=" + install + "/include",
+            "-DOGG_INCLUDE_DIR=" + include,
             "-DVORBIS_LIBRARY=" + install + "/lib/libvorbis.a",
+            "-DVORBIS_INCLUDE_DIR=" + include,
             "-DVORBISFILE_LIBRARY=" + install + "/lib/libvorbisfile.a",
-            "-DVORBIS_INCLUDE_DIR=" + install + "/include",
             "-DSUPPORT_VORBIS=true",
             "-DFREETYPE_LIBRARY=" + install + "/lib/libfreetype.a",
             "-DFREETYPE_INCLUDE_DIRS=" + install + "/include;" + install + "/include/freetype2",
+            #"-DPNG_INCLUDE_DIR=" + install + "/include",
+            #"-DPNG_LIBRARY=" + install + "/lib/libpng.a",
+            "-DFLAC_LIBRARY=" + install + "/lib/libFLAC.a",
+            "-DFLAC_INCLUDE_DIR=" + include,
+            "-DPHYSFS_LIBRARY=" + install + "/lib/libphysfs.a",
+            "-DPHYSFS_INCLUDE_DIR=" + include,
+            "-DOPUS_LIBRARY=" + install + "/lib/libopus.a",
+            "-DOPUS_INCLUDE_DIR=" + include + "/opus",
+            "-DOPUSFILE_LIBRARY=" + install + "/lib/libopusfile.a",
+            "-DDUMB_LIBRARY=" + install + "/lib/libdumb.a",
+            "-DDUMB_INCLUDE_DIR=" + include,
+            "-DMINIMP3_INCLUDE_DIRS=" + include,
+            #"-DTHEORA_LIBRARY=" + install + "/lib/libtheora.a",
+            #"-DTHEORA_INCLUDE_DIR=" + include,
             )
             
         com("make", "-j4", "VERBOSE=1")

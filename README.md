@@ -1,4 +1,17 @@
-To use the Allegro Android binaries from Android Studio 2 or 3:
+These binaries contain Allegro pre-built for Android (armeabi-v7, arm64-v8a, x86, x86_64) and
+includes the following optional components:
+
+ * freetype
+ * flac
+ * opus
+ * vorbis
+ * dumb
+ * minimp3
+ * physfs
+
+It does not include theora or freeimage at this point.
+
+To use the Allegro Android binaries from Android Studio 3:
 
 1. Create a new Android Studio NDK project
  * Use "Start a new Android Studio project" from the welcome dialog or File->New from the menu
@@ -22,13 +35,7 @@ To use the Allegro Android binaries from Android Studio 2 or 3:
 2. In your app/build.gradle, inside of dependencies {}, add this:
 
  ```
- implementation 'org.liballeg:allegro5-release:5.2.6.0A'
- ```
- 
- or this for Android Studio 2:
- 
- ```
- compile 'org.liballeg:allegro5-release:5.2.6.0A'
+ implementation 'org.liballeg:allegro5-release:5.2.6.0B'
  ```
  
  In Android Studio in the "Android" view this file will be under "Gradle Scripts".
@@ -45,7 +52,7 @@ To use the Allegro Android binaries from Android Studio 2 or 3:
 
  Next install the Allegro headers:
 
- http://allegro5.org/android/5.2.6.0A/allegro_jni_includes.zip
+ http://allegro5.org/android/5.2.6.0B/allegro_jni_includes.zip
 
  And unzip anywhere, for this example I will put it inside the project folder, so
  it will end up as app/src/main/allegro\_jni\_includes.
