@@ -54,6 +54,10 @@ To use the Allegro Android binaries from Android Studio 3:
 
  http://allegro5.org/android/5.2.6.0B/allegro_jni_includes.zip
 
+ or for the debug version:
+ 
+ http://allegro5.org/android/5.2.6.0B/allegro_jni_includes-debug.zip
+
  And unzip anywhere, for this example I will put it inside the project folder, so
  it will end up as app/src/main/allegro\_jni\_includes.
  

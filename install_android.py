@@ -640,12 +640,13 @@ bintray {
     write(args.path + "/gradle_project/settings.gradle", "include ':allegro'")
    
     chdir(args.path + "/gradle_project")
-    com("zip", "-r", "allegro_jni_includes.zip", "allegro_jni_includes")
+    d = "-debug" if args.debug else ""
+    com("zip", "-r", "allegro_jni_includes" + d + ".zip", "allegro_jni_includes")
 
     if args.dist:
         com("./gradlew", "bintrayUpload")
         makedirs("/var/www/allegro5.org/android/" + s.version)
-        copy("allegro_jni_includes.zip", "/var/www/allegro5.org/android/" + s.version)
+        copy("allegro_jni_includes" + d + ".zip", "/var/www/allegro5.org/android/" + s.version)
 
 if __name__ == "__main__":
     main()
