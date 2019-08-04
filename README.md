@@ -143,3 +143,13 @@ store and it will just work!
     ```
     android:configChanges="orientation|keyboardHidden|screenLayout|uiMode|screenSize"
     ```
+
+ * The way Allegro reads form the APK with al_android_set_apk_file_interface does not work for files which are recompressed inside of the APK. To prevent recompression at this to your app/build.gradle:
+   ```
+    android {
+        aaptOptions {
+            noCompress ""
+        }
+    }
+    ```
+    The "" means to not recompress any files, you can also provide a list of file extensions instead.
