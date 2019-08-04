@@ -461,6 +461,8 @@ def build_aar():
     
     allegro5 = args.path + "/gradle_project/allegro"
     includes = args.path + "/gradle_project/allegro_jni_includes"
+    if args.debug:
+        includes += "_debug"
 
     for arch in s.architectures:
         install = args.path + "/output-" + arch.replace(" ", "_")
@@ -640,13 +642,12 @@ bintray {
     write(args.path + "/gradle_project/settings.gradle", "include ':allegro'")
    
     chdir(args.path + "/gradle_project")
-    d = "-debug" if args.debug else ""
-    com("zip", "-r", "allegro_jni_includes" + d + ".zip", "allegro_jni_includes")
+    com("zip", "-r", includes + ".zip", includes)
 
     if args.dist:
         com("./gradlew", "bintrayUpload")
         makedirs("/var/www/allegro5.org/android/" + s.version)
-        copy("allegro_jni_includes" + d + ".zip", "/var/www/allegro5.org/android/" + s.version)
+        copy(includes + ".zip", "/var/www/allegro5.org/android/" + s.version)
 
 if __name__ == "__main__":
     main()
