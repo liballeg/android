@@ -547,7 +547,7 @@ apply plugin: 'com.android.library'
 android {
     compileSdkVersion 28
     defaultConfig {
-        minSdkVersion 17
+        minSdkVersion 15
         targetSdkVersion 28
         versionCode 1
         versionName "«version»"
@@ -643,6 +643,7 @@ bintray {
    
     chdir(args.path + "/gradle_project")
     com("zip", "-r", includes + ".zip", includes)
+    com("./gradlew", "assembleDebug" if args.debug else "assembleRelease")
 
     if args.dist:
         com("./gradlew", "bintrayUpload")

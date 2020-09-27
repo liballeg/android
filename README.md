@@ -15,7 +15,7 @@ To use the Allegro Android binaries from Android Studio 3:
 
 1. Create a new Android Studio NDK project
  * Use "Start a new Android Studio project" from the welcome dialog or File->New from the menu
- * Select C++ project (Or in AS 3.2 check the "Include C++ support" checkbox on the first dialog)
+ * Select "Native C++" (Or in AS 3.2 check the "Include C++ support" checkbox on the first dialog)
  * Leave minimum SDK at 15 on the second dialog
  * Leave the C++ settings at their defaults
  * Click "Finish"
@@ -70,7 +70,7 @@ To use the Allegro Android binaries from Android Studio 3:
  ```
 
 4. Modify app/src/main/java/.../MainActivity.java like this:
- (Keep the original package name in the first line.)
+ (Keep your package name in the first line.)
 
  ```
  import org.liballeg.android.AllegroActivity;
@@ -144,7 +144,7 @@ store and it will just work!
     android:configChanges="orientation|keyboardHidden|screenLayout|uiMode|screenSize"
     ```
 
- * The way Allegro reads form the APK with al_android_set_apk_file_interface does not work for files which are recompressed inside of the APK. To prevent recompression at this to your app/build.gradle:
+ * The way Allegro reads form the APK with al_android_set_apk_file_interface does not work for files which are recompressed inside of the APK. To prevent recompression add this to your app/build.gradle:
    ```
     android {
         aaptOptions {
