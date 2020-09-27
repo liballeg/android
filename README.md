@@ -35,7 +35,7 @@ To use the Allegro Android binaries from Android Studio 3:
 2. In your app/build.gradle, inside of dependencies {}, add this:
 
  ```
- implementation 'org.liballeg:allegro5-release:5.2.6.0C'
+ implementation 'org.liballeg:allegro5-release:5.2.7.0'
  ```
  
  In Android Studio in the "Android" view this file will be under "Gradle Scripts".
@@ -52,11 +52,11 @@ To use the Allegro Android binaries from Android Studio 3:
 
  Next install the Allegro headers:
 
- http://allegro5.org/android/5.2.6.0C/allegro_jni_includes.zip
+ http://allegro5.org/android/5.2.7.0/allegro_jni_includes.zip
 
  or for the debug version:
  
- http://allegro5.org/android/5.2.6.0C/allegro_jni_includes_debug.zip
+ http://allegro5.org/android/5.2.7.0/allegro_jni_includes_debug.zip
 
  And unzip anywhere, for this example I will put it inside the project folder, so
  it will end up as app/src/main/allegro\_jni\_includes.
